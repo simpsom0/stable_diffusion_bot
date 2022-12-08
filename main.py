@@ -1,34 +1,44 @@
+from time import sleep
 import bot
 import query_sd
 import threading
+import os
+import signal
 
 THREADS = []
-# RUN_SD = threading.Event()
+PID = None
+RUN = threading.Event()
 
 def main():
-    # bot.run_discord_bot()
-    THREADS.append(threading.Thread(target=bot.run_discord_bot))
-    THREADS.append(threading.Thread(target=query_sd.call_sd, daemon=True))
+	global PID, RUN
 
-    # with the event flag, this will run the threads
-    for thread in THREADS:
-        thread.start()
+	RUN.set()
+	THREADS.append(threading.Thread(target=bot.start_discord_bot, args=[RUN]))
+	THREADS.append(threading.Thread(target=query_sd.start_sd, args=[RUN]))
 
-    for thread in THREADS:
-        thread.join()
+	for thread in THREADS:
+		thread.start()
+	for thread in THREADS:
+		thread.join()
+
+
+def backup(prompts, users):
+	global THREADS
+
+	with open('backup/prompts.txt', 'w') as fp:
+		for prompt in prompts:
+			fp.write(f'{prompt}\n')
+	with open('backup/users.txt', 'w') as fp:
+		for user in users:
+			fp.write(f'{user}\n')
 
 
 if __name__ == '__main__':
-    # RUN_SD.set()
-
-    try:
-        main()
-    except KeyboardInterrupt:
-        # RUN_SD.clear()
-
-        # for thread in THREADS:
-        #     thread.join()
-        # print('threads (hopefully) successfully closed')
-
-        for thread in THREADS:
-            print(f'thread alive?: {thread.is_alive()}')
+	try:
+		main()
+	except KeyboardInterrupt:
+		RUN.clear()
+		for thread in THREADS:
+			print(f'thread alive?: {thread.is_alive()}')
+			# thread.join()
+		
